@@ -61,7 +61,59 @@ class TestRelativePathImports(unittest.TestCase):
         content = process_file('test_dir/sub_dir/test_import.txt')
         self.assertEqual(content, expected_content)
 
+class TestNonCircularImports(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Create test files
+        with open('fileC.txt', 'w') as f:
+            f.write("Content of file C.\n")
+
+        with open('fileB.txt', 'w') as f:
+            f.write("@import(fileC.txt)\nContent of file B.\n")
+
+        with open('fileA.txt', 'w') as f:
+            f.write("@import(fileB.txt)\n@import(fileC.txt)\nContent of file A.\n")
+
+    @classmethod
+    def tearDownClass(cls):
+        # Remove test files
+        os.remove('fileC.txt')
+        os.remove('fileB.txt')
+        os.remove('fileA.txt')
+
+    def test_non_circular_imports(self):
+        expected_content = "Content of file C.\nContent of file B.\nContent of file C.\nContent of file A.\n"
+        content = process_file('fileA.txt')
+        self.assertEqual(content, expected_content)
+
+
+class TestCircularImports(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Create test files for circular import
+        with open('fileA.txt', 'w') as f:
+            f.write("@import(fileB.txt)\nContent of file A.\n")
+
+        with open('fileB.txt', 'w') as f:
+            f.write("@import(fileA.txt)\nContent of file B.\n")
+
+    @classmethod
+    def tearDownClass(cls):
+        # Remove test files
+        os.remove('fileA.txt')
+        os.remove('fileB.txt')
+
+    def test_circular_import(self):
+        # with self.assertLogs(level='WARNING') as log:
+        #     content = process_file('fileA.txt')
+        #     self.assertIn("Circular import detected", log.output[0])
+
+        content = process_file('fileA.txt')
+        # Check content to ensure it doesn't contain repeated imports due to circular reference
+        expected_content = "Content of file B.\nContent of file A.\n"
+        self.assertEqual(content, expected_content)
 
 if __name__ == '__main__':
     unittest.main()
-

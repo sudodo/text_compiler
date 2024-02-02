@@ -79,3 +79,11 @@ Does your code allows a user to import the same file in a not circular way?
 For example, I think the below case is permitted because it is not circular.
 
 file A imports file B and file C. file B imports file C.
+
+## Q
+
+I think specifying the same path of the output file as the input is not permissble. For example, the below case is not allowed because file A might be collapsed:
+
+- The input file is file A. The output file is also file A.
+
+Please update the code to show the error message when the same path is specified for the input and the output and halt the process.

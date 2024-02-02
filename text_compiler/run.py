@@ -9,41 +9,53 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('-o', '--output-file-path', type=str, required=True, help='Path for the output file')
     return parser.parse_args()
 
-def process_file(file_path: str, base_path: str = '') -> str:
+import os
+import re
+
+def process_file(file_path: str, base_path: str = '', current_chain: set = None) -> str:
     """
     Process a file, replacing "@import" directives with the content of the referenced files.
+    Also checks for circular imports within the current import chain.
 
     Args:
     file_path (str): Path to the file to process. Can be absolute or relative.
     base_path (str): Base path to resolve relative paths for imports.
+    current_chain (set): Set of files in the current import chain to detect circular imports.
 
     Returns:
     str: The processed content of the file.
     """
+    if current_chain is None:
+        current_chain = set()
+
     # Resolve the absolute path of the file if a relative path is provided
-    if not os.path.isabs(file_path):
-        file_path = os.path.abspath(os.path.join(base_path, file_path))
+    abs_file_path = os.path.abspath(os.path.join(base_path, file_path))
 
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    if abs_file_path in current_chain:
+        print(f"Warning: Circular import detected for file {abs_file_path}. Skipping import.")
+        return ''
 
-    with open(file_path, 'r') as file:
+    if not os.path.isfile(abs_file_path):
+        raise FileNotFoundError(f"The file {abs_file_path} does not exist.")
+
+    current_chain.add(abs_file_path)
+
+    with open(abs_file_path, 'r') as file:
         content = []
         for line in file:
             match = re.match(r'@import\((.*?)\)', line.strip())
             if match:
                 import_path = match.group(1)
-                # Determine the base path for the imported file (directory of the current file)
-                import_base_path = os.path.dirname(file_path)
-                # Process the imported file, using its base path to resolve relative paths
-                imported_content = process_file(import_path, import_base_path)
-                if not imported_content.endswith('\n'):
+                import_base_path = os.path.dirname(abs_file_path)
+                imported_content = process_file(import_path, import_base_path, current_chain.copy())
+                if imported_content and not imported_content.endswith('\n'):
                     imported_content += '\n'
                 content.append(imported_content)
             else:
                 content.append(line)
-        return ''.join(content)
 
+        current_chain.remove(abs_file_path)
+        return ''.join(content)
 
 def main():
     args = parse_arguments()
