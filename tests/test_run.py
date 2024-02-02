@@ -34,5 +34,34 @@ class TestFileCompiler(unittest.TestCase):
 
     # You can add more tests to cover other cases like handling non-existent files
 
+class TestRelativePathImports(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Create directories
+        os.makedirs('test_dir/sub_dir', exist_ok=True)
+
+        # Create test files
+        with open('test_dir/test_file.txt', 'w') as f:
+            f.write("Content of test file.\n")
+
+        with open('test_dir/sub_dir/test_import.txt', 'w') as f:
+            f.write("@import(../test_file.txt)\nContent of import file.")
+
+    @classmethod
+    def tearDownClass(cls):
+        # Remove test files and directories
+        os.remove('test_dir/sub_dir/test_import.txt')
+        os.remove('test_dir/test_file.txt')
+        os.rmdir('test_dir/sub_dir')
+        os.rmdir('test_dir')
+
+    def test_relative_import(self):
+        expected_content = "Content of test file.\nContent of import file."
+        content = process_file('test_dir/sub_dir/test_import.txt')
+        self.assertEqual(content, expected_content)
+
+
 if __name__ == '__main__':
     unittest.main()
+
